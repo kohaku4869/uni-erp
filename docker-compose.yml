@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: uni-erp-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: uni_erp
+      POSTGRES_PASSWORD: uni_erp
+      POSTGRES_DB: uni_erp
+    ports:
+      # Cổng 5432 trên máy thường đã bị Postgres local chiếm -> dùng 5433
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # Chạy theo thứ tự tên file khi khởi tạo DB lần đầu
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      # triggers chạy TRƯỚC seed -> dữ liệu mẫu cũng phải thoả mọi business rule
+      - ./database/triggers.sql:/docker-entrypoint-initdb.d/02_triggers.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/03_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U uni_erp -d uni_erp"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
